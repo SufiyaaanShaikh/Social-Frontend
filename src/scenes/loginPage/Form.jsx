@@ -6,6 +6,7 @@ import {
   useMediaQuery,
   Typography,
   useTheme,
+  CircularProgress,
 } from "@mui/material";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import { Formik } from "formik";
@@ -23,7 +24,7 @@ const registerSchema = yup.object().shape({
   password: yup.string().required("required"),
   location: yup.string().required("required"),
   occupation: yup.string().required("required"),
-  picture: yup.string().required("required"),
+  picture: yup.string(),  // Made optional for testing
 });
 
 const loginSchema = yup.object().shape({
@@ -48,6 +49,8 @@ const initialValuesLogin = {
 
 const Form = () => {
   const [pageType, setPageType] = useState("login");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
   const { palette } = useTheme();
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -56,44 +59,83 @@ const Form = () => {
   const isRegister = pageType === "register";
 
   const register = async (values, onSubmitProps) => {
-    // this allows us to send form info with image
-    const formData = new FormData();
-    for (let value in values) {
-      formData.append(value, values[value]);
-    }
-    formData.append("picturePath", values.picture.name);
-
-    const savedUserResponse = await fetch(
-      "https://social-backend-u3jw.vercel.app/auth/register",
-      {
-        method: "POST",
-        body: formData,
+    try {
+      setIsSubmitting(true);
+      setError("");
+      
+      // Create FormData for file upload
+      const formData = new FormData();
+      
+      // Add text fields
+      formData.append("firstName", values.firstName);
+      formData.append("lastName", values.lastName);
+      formData.append("email", values.email);
+      formData.append("password", values.password);
+      formData.append("location", values.location);
+      formData.append("occupation", values.occupation);
+      
+      // Add picture if present
+      if (values.picture) {
+        formData.append("picture", values.picture);
       }
-    );
-    const savedUser = await savedUserResponse.json();
-    onSubmitProps.resetForm();
 
-    if (savedUser) {
+      const response = await fetch(
+        "https://social-backend-u3jw.vercel.app/auth/register",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Registration failed");
+      }
+      
+      const savedUser = await response.json();
+      
+      onSubmitProps.resetForm();
       setPageType("login");
+    } catch (error) {
+      console.error("Registration error:", error);
+      setError(error.message || "Registration failed, please try again");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const login = async (values, onSubmitProps) => {
-    const loggedInResponse = await fetch("https://social-backend-u3jw.vercel.app/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(values),
-    });
-    const loggedIn = await loggedInResponse.json();
-    onSubmitProps.resetForm();
-    if (loggedIn) {
+    try {
+      setIsSubmitting(true);
+      setError("");
+      
+      const response = await fetch("https://social-backend-u3jw.vercel.app/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.msg || "Login failed");
+      }
+      
+      const loggedIn = await response.json();
+      onSubmitProps.resetForm();
+      
       dispatch(
         setLogin({
           user: loggedIn.user,
           token: loggedIn.token,
         })
       );
+      
       navigate("/home");
+    } catch (error) {
+      console.error("Login error:", error);
+      setError(error.message || "Login failed, please try again");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -195,7 +237,7 @@ const Form = () => {
                       >
                         <input {...getInputProps()} />
                         {!values.picture ? (
-                          <p>Add Picture Here</p>
+                          <p>Add Picture Here (Optional)</p>
                         ) : (
                           <FlexBetween>
                             <Typography>{values.picture.name}</Typography>
@@ -232,11 +274,19 @@ const Form = () => {
             />
           </Box>
 
+          {/* Error Message */}
+          {error && (
+            <Typography color="error" sx={{ mt: 2 }}>
+              {error}
+            </Typography>
+          )}
+
           {/* BUTTONS */}
           <Box>
             <Button
               fullWidth
               type="submit"
+              disabled={isSubmitting}
               sx={{
                 m: "2rem 0",
                 p: "1rem",
@@ -245,19 +295,26 @@ const Form = () => {
                 "&:hover": { color: palette.primary.main },
               }}
             >
-              {isLogin ? "LOGIN" : "REGISTER"}
+              {isSubmitting ? (
+                <CircularProgress size={24} color="inherit" />
+              ) : (
+                isLogin ? "LOGIN" : "REGISTER"
+              )}
             </Button>
             <Typography
               onClick={() => {
-                setPageType(isLogin ? "register" : "login");
-                resetForm();
+                if (!isSubmitting) {
+                  setPageType(isLogin ? "register" : "login");
+                  setError("");
+                  resetForm();
+                }
               }}
               sx={{
                 textDecoration: "underline",
                 color: palette.primary.main,
                 "&:hover": {
-                  cursor: "pointer",
-                  color: palette.primary.light,
+                  cursor: isSubmitting ? "default" : "pointer",
+                  color: isSubmitting ? palette.primary.main : palette.primary.light,
                 },
               }}
             >

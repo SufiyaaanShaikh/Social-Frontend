@@ -11,7 +11,7 @@ const UserImage = ({ image, size = "60px" }) => {
         width={size}
         height={size}
         alt="user"
-        src={`https://social-backend-u3jw.vercel.app/assets/${image}`}
+        src={`${image}`}
       />
     </Box>
   );

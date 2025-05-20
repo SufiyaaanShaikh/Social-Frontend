@@ -20,7 +20,6 @@ import {
     const dark = palette.neutral.dark;
     const medium = palette.neutral.medium;
     const main = palette.neutral.main;
-  
     const getUser = async () => {
       const response = await fetch(`https://social-backend-u3jw.vercel.app/users/${userId}`, {
         method: "GET",

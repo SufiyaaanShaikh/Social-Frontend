@@ -64,7 +64,7 @@ import {
             height="auto"
             alt="post"
             style={{ borderRadius: "0.75rem", marginTop: "0.75rem" }}
-            src={`https://social-backend-u3jw.vercel.app/assets/${picturePath}`}
+            src={`${picturePath}`}
           />
         )}
         <FlexBetween mt="0.25rem">
